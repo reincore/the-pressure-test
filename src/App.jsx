@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Key, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, Loader2, ExternalLink, Clock } from 'lucide-react'
+import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Loader2, ExternalLink, Clock } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -7,60 +7,71 @@ const LS_KEY_API = 'pressure_test_gemini_key'
 const LS_KEY_HISTORY = 'pressure_test_history'
 const MAX_HISTORY = 15
 
-const POSTURES = {
-  trusted: {
-    label: 'Trusted Friend',
-    description: 'Honest pre-mortem from someone who cares',
-    systemPrompt: `You are a trusted, brilliant friend with no stake in the user's success. Give an honest pre-mortem. Rules: start with a one-sentence gut reaction (never sycophantic). Identify 2-3 real-world risks. Name blind spots. End with a verdict: Proceed / Refine / Reconsider. Tone: warm but direct.
-
-Format your response using exactly these bold markdown headers on their own lines:
-
-**First Reaction**
-[your gut reaction here]
-
-**What Could Go Wrong**
-[2-3 real-world risks]
-
-**What You're Not Seeing**
-[blind spots]
-
-**My Honest Verdict**
-[Proceed / Refine / Reconsider — with brief reasoning]`,
-  },
+const MODES = {
   socratic: {
     label: 'Socratic',
-    description: 'Surface weak assumptions as labeled questions',
-    systemPrompt: `You are a Socratic interlocutor. Never say the user is wrong directly. Identify the 3-5 weakest assumptions and surface them as labeled questions. Use these labels where appropriate: [Empirical Claim], [Hidden Assumption], [Scope Problem], [Motivated Reasoning], [Causal Claim], [Definitional Problem]. End with a Core Question — the single question that most undermines the position. Note what holds up.
-
-Format your response using exactly these bold markdown headers on their own lines:
-
+    tagline: "Questions that expose what you haven't considered",
+    icon: '∮',
+    systemPrompt: `You are a Socratic interlocutor — rigorous, calm, and relentless. Your job is NOT to tell the user they are wrong directly. Instead, you identify the 3-5 weakest assumptions, logical gaps, or unexamined premises in their argument, and you expose them through precise, pointed questions.
+Rules:
+- Never affirm the user's position as correct. Maintain productive skepticism.
+- Each question must target a SPECIFIC vulnerability (an unverified empirical claim, a hidden assumption, a scope problem, a motivated reasoning pattern, etc.)
+- Label each question with the type of vulnerability it targets: [Empirical Claim], [Hidden Assumption], [Scope], [Motivated Reasoning], [Definitional Problem], [Causal Claim], etc.
+- End with a "Core Question" — the single most important question that, if the user cannot answer it, would most undermine their position.
+- Be concise. Each question should be 1-2 sentences max. No filler.
+- Tone: like a brilliant philosophy professor who respects the user enough to be honest.
+Format your response as:
 **Pressure Points**
-[labeled questions, one per line]
-
+[Question 1 with label]
+[Question 2 with label]
+...
 **Core Question**
-[the single most undermining question]
-
-**What Actually Holds Up**
-[what is genuinely strong in the argument]`,
+[The most important question]
+**What's Actually Strong**
+[1-2 sentences on what genuinely holds up in the argument]`,
   },
   devils: {
     label: "Devil's Advocate",
-    description: 'The strongest possible case against your position',
-    systemPrompt: `You are a serious intellectual opponent, not a contrarian. Steelman first (one sentence). Then construct the strongest possible case against. Identify the Fatal Assumption — the single assumption that, if wrong, collapses the argument. Note briefly where the user is right.
-
-Format your response using exactly these bold markdown headers on their own lines:
-
-**The Steelman**
-[one sentence steelman of the position]
-
+    tagline: 'The best case against you, argued seriously',
+    icon: '⊗',
+    systemPrompt: `You are a Devil's Advocate — not a contrarian, but a serious intellectual opponent. Your job is to construct the STRONGEST possible case against the user's position or idea. You argue as if you are a smart, well-informed person who genuinely holds the opposing view.
+Rules:
+- Lead with the single most damaging objection — the one that would make a smart skeptic dismiss the idea immediately.
+- Deploy real evidence, known counterexamples, or plausible scenarios that would falsify the user's position.
+- Identify which of the user's assumptions is doing the most load-bearing work, then attack it specifically.
+- Do NOT strawman. Steelman the position first (1 sentence), then dismantle it.
+- At the end, briefly note where the user's position actually holds up — intellectual honesty requires this.
+- Tone: a brilliant, sharp colleague who disagrees with you and is not afraid to say so.
+Format:
+**The Steelman** (1 sentence — the strongest version of the user's position)
 **The Case Against**
-[the strongest possible counterargument]
-
+[Lead objection]
+[Supporting objections, evidence, counterexamples]
 **The Fatal Assumption**
-[the single assumption that, if wrong, collapses everything]
-
+[The one thing the argument depends on that might not be true]
 **Where You're Actually Right**
-[brief acknowledgment of genuine strengths]`,
+[Be brief and honest]`,
+  },
+  friend: {
+    label: 'Trusted Friend',
+    tagline: 'What a brilliant, honest friend would say before you go public',
+    icon: '◈',
+    systemPrompt: `You are a trusted, brilliant friend — someone who knows a lot, has no stake in the user's success, and cares enough to tell them the truth. The user is about to go public with an idea, share an opinion, or act on a belief. Your job is to give them the honest pre-mortem: what could go wrong, what are they not seeing, and what would you tell them if you wanted them to succeed.
+Rules:
+- Start with your gut reaction — one sentence, honest.
+- Identify the 2-3 things that could most undermine this in the real world (not just logically — practically, socially, evidentially).
+- Point out any blind spots: things the user seems to not have considered, or seems to be avoiding.
+- Give a final honest verdict: should they proceed, refine, or reconsider? Be direct.
+- Tone: warm, direct, no flattery, no cruelty. Like a friend who happens to be very smart and has seen a lot of ideas fail.
+Format:
+**First Reaction**
+[One honest sentence]
+**What Could Go Wrong**
+[2-3 specific risks, practical or logical]
+**What You're Not Seeing**
+[Blind spots, unconsidered angles]
+**My Honest Verdict**
+[Proceed / Refine / Reconsider — with a brief explanation]`,
   },
 }
 
@@ -155,62 +166,31 @@ function renderMarkdown(text) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ApiKeyBar({ apiKey, onKeyChange }) {
-  const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(apiKey)
-  const inputRef = useRef(null)
-  const hasKey = Boolean(apiKey)
 
-  const save = () => {
-    const trimmed = draft.trim()
-    onKeyChange(trimmed)
-    setEditing(false)
-  }
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+  const commit = () => onKeyChange(draft.trim())
 
   return (
     <div className="api-bar">
-      <div className="api-bar-left">
-        <Key size={13} className="api-icon" />
-        <span className="api-label">Gemini API Key</span>
-        <span className={`api-status ${hasKey ? 'api-status--set' : 'api-status--missing'}`}>
-          {hasKey ? 'set' : 'missing'}
-        </span>
-      </div>
-      <div className="api-bar-right">
-        {editing ? (
-          <div className="api-edit">
-            <input
-              ref={inputRef}
-              type="password"
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
-              placeholder="AIza..."
-              className="api-input"
-              spellCheck={false}
-            />
-            <button onClick={save} className="btn-secondary btn-sm">Save</button>
-            <button onClick={() => setEditing(false)} className="btn-ghost btn-sm">Cancel</button>
-          </div>
-        ) : (
-          <div className="api-actions">
-            <button onClick={() => { setDraft(apiKey); setEditing(true) }} className="btn-ghost btn-sm">
-              {hasKey ? 'Change' : 'Set key'}
-            </button>
-            <a
-              href="https://aistudio.google.com/app/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="api-link"
-            >
-              Get key <ExternalLink size={10} />
-            </a>
-          </div>
-        )}
-      </div>
+      <input
+        type="password"
+        className="api-input"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') { commit(); e.target.blur() } }}
+        placeholder="Paste your Gemini API key to get started"
+        spellCheck={false}
+        autoComplete="off"
+      />
+      <a
+        href="https://aistudio.google.com/app/apikey"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="api-link"
+      >
+        Get one free <ExternalLink size={10} />
+      </a>
     </div>
   )
 }
@@ -218,14 +198,17 @@ function ApiKeyBar({ apiKey, onKeyChange }) {
 function PostureSelector({ posture, onChange }) {
   return (
     <div className="posture-selector">
-      {Object.entries(POSTURES).map(([key, { label, description }]) => (
+      {Object.entries(MODES).map(([key, { label, tagline, icon }]) => (
         <button
           key={key}
           className={`posture-btn ${posture === key ? 'posture-btn--active' : ''}`}
           onClick={() => onChange(key)}
         >
-          <span className="posture-btn-label">{label}</span>
-          <span className="posture-btn-desc">{description}</span>
+          <span className="posture-btn-top">
+            <span className="posture-btn-icon">{icon}</span>
+            <span className="posture-btn-label">{label}</span>
+          </span>
+          <span className="posture-btn-tagline">{tagline}</span>
         </button>
       ))}
     </div>
@@ -316,7 +299,7 @@ function ErrorCard({ error, onDismiss }) {
 function ResultPanel({ result, posture }) {
   return (
     <div className="result-panel">
-      <div className="result-posture-tag">{POSTURES[posture]?.label}</div>
+      <div className="result-posture-tag">{MODES[posture]?.label}</div>
       <div className="result-body">{renderMarkdown(result)}</div>
     </div>
   )
@@ -343,7 +326,7 @@ function HistoryPanel({ history, onReload, onClear }) {
               onClick={() => onReload(item)}
             >
               <div className="history-item-meta">
-                <span className="history-posture">{POSTURES[item.posture]?.label}</span>
+                <span className="history-posture">{MODES[item.posture]?.label}</span>
                 <span className="history-time">{new Date(item.timestamp).toLocaleString()}</span>
               </div>
               <div className="history-preview">{item.inputPreview}</div>
@@ -375,7 +358,7 @@ function ToastContainer({ toasts, onRemove }) {
 
 export default function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(LS_KEY_API) || '')
-  const [posture, setPosture] = useState('trusted')
+  const [posture, setPosture] = useState('socratic')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -430,7 +413,7 @@ export default function App() {
     setResult(null)
 
     try {
-      const text = await callGemini(apiKey, POSTURES[posture].systemPrompt, input.trim())
+      const text = await callGemini(apiKey, MODES[posture].systemPrompt, input.trim())
       setResult(text)
       setResultPosture(posture)
       saveToHistory(posture, input.trim(), text)
