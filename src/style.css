@@ -103,8 +103,14 @@ input, textarea {
   }
 
   /* Left column: posture + input */
-  .section--posture  { grid-column: 1; }
-  .section--input    { grid-column: 1; }
+  .section--posture  { grid-column: 1; width: 100%; }
+  .section--input    { grid-column: 1; width: 100%; }
+
+  .posture-btn {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0.65rem 0.875rem;
+  }
 
   /* Right column: result, error, history */
   .result-panel      { grid-column: 2; grid-row: 1 / span 4; }
@@ -222,6 +228,7 @@ input, textarea {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  width: 100%;
 }
 
 .section-label {
