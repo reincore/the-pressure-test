@@ -207,6 +207,23 @@ input, textarea {
   color: #111109;
 }
 
+.posture-btn-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.posture-btn-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--accent-dim);
+  flex-shrink: 0;
+}
+
+.posture-btn--active .posture-btn-icon {
+  color: rgba(17, 17, 9, 0.55);
+}
+
 .posture-btn-label {
   font-family: var(--font-serif);
   font-size: 0.9rem;
@@ -218,14 +235,14 @@ input, textarea {
   color: #111109;
 }
 
-.posture-btn-desc {
+.posture-btn-tagline {
   font-size: 0.72rem;
   line-height: 1.3;
   color: var(--text-muted);
 }
 
-.posture-btn--active .posture-btn-desc {
-  color: rgba(17, 17, 9, 0.7);
+.posture-btn--active .posture-btn-tagline {
+  color: rgba(17, 17, 9, 0.6);
 }
 
 /* ─── Input area ────────────────────────────────────────────────────────────── */
@@ -656,7 +673,7 @@ input, textarea {
     gap: 0.5rem;
   }
 
-  .posture-btn-desc {
+  .posture-btn-tagline {
     display: none;
   }
 
