@@ -72,10 +72,10 @@ input, textarea {
   width: 100%;
 }
 
-/* Two-column layout: input pane left, result pane right */
+/* Medium screens: widen the single-column layout */
 @media (min-width: 1000px) {
   .app {
-    max-width: min(1400px, 94vw);
+    max-width: min(880px, 94vw);
     padding: 0 0 5rem;
   }
 
@@ -83,11 +83,22 @@ input, textarea {
     padding: 3rem 0 2.5rem;
   }
 
+  .main-textarea {
+    min-height: 220px;
+  }
+}
+
+/* Wide screens: two-column layout — input pane left, result pane right */
+@media (min-width: 1400px) {
+  .app {
+    max-width: min(1600px, 92vw);
+  }
+
   .app-main {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto;
-    column-gap: 3rem;
+    column-gap: 4rem;
     align-items: start;
   }
 
@@ -99,20 +110,6 @@ input, textarea {
   .result-panel      { grid-column: 2; grid-row: 1 / span 4; }
   .error-card        { grid-column: 2; }
   .history-panel     { grid-column: 1 / -1; }
-
-  .main-textarea {
-    min-height: 220px;
-  }
-}
-
-@media (min-width: 1400px) {
-  .app {
-    max-width: min(1600px, 92vw);
-  }
-
-  .app-main {
-    column-gap: 4rem;
-  }
 }
 
 /* ─── API bar ───────────────────────────────────────────────────────────────── */
