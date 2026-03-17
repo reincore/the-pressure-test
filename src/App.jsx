@@ -167,30 +167,38 @@ function renderMarkdown(text) {
 
 function ApiKeyBar({ apiKey, onKeyChange }) {
   const [draft, setDraft] = useState(apiKey)
+  const isSet = Boolean(apiKey)
 
   const commit = () => onKeyChange(draft.trim())
 
   return (
-    <div className="api-bar">
-      <input
-        type="password"
-        className="api-input"
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={e => { if (e.key === 'Enter') { commit(); e.target.blur() } }}
-        placeholder="Paste your Gemini API key to get started"
-        spellCheck={false}
-        autoComplete="off"
-      />
-      <a
-        href="https://aistudio.google.com/app/apikey"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="api-link"
-      >
-        Get one free <ExternalLink size={10} />
-      </a>
+    <div className={`api-bar${isSet ? ' api-bar--set' : ''}`}>
+      <span className="api-bar-label">
+        {isSet ? 'Gemini API key (set)' : 'Gemini API key — required to run the test'}
+      </span>
+      <div className="api-bar-row">
+        <input
+          type="password"
+          className="api-input"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') { commit(); e.target.blur() } }}
+          placeholder={isSet ? '••••••••••••••••' : 'AIza…'}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        {!isSet && (
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="api-link"
+          >
+            Get one free <ExternalLink size={10} />
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -474,7 +482,12 @@ export default function App() {
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
           />
           <div className="input-footer">
-            <span className="input-hint">⌘↩ to submit</span>
+            <span className="input-hint">
+              <span>⌘↩</span>
+              <span className="input-hint-sep">/</span>
+              <span>Ctrl+↩</span>
+              <span className="input-hint-sep">to submit</span>
+            </span>
             <button
               className="submit-btn"
               onClick={handleSubmit}
