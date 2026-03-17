@@ -27,7 +27,7 @@
 }
 
 html {
-  font-size: 14px;
+  font-size: clamp(14px, 1vw, 18px);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -66,34 +66,52 @@ input, textarea {
 /* ─── Layout ────────────────────────────────────────────────────────────────── */
 
 .app {
-  max-width: 720px;
+  max-width: min(680px, 92vw);
   margin: 0 auto;
-  padding: 0 2rem 4rem;
+  padding: 0 0 4rem;
   width: 100%;
 }
 
-@media (min-width: 900px) {
+/* Two-column layout: input pane left, result pane right */
+@media (min-width: 1000px) {
   .app {
-    padding: 0 2.5rem 4rem;
+    max-width: min(1400px, 94vw);
+    padding: 0 0 5rem;
+  }
+
+  .app-header {
+    padding: 3rem 0 2.5rem;
+  }
+
+  .app-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  /* Left column: posture + input */
+  .section--posture  { grid-column: 1; }
+  .section--input    { grid-column: 1; }
+
+  /* Right column: result, error, history */
+  .result-panel      { grid-column: 2; grid-row: 1 / span 4; }
+  .error-card        { grid-column: 2; }
+  .history-panel     { grid-column: 1 / -1; }
+
+  .main-textarea {
+    min-height: 220px;
   }
 }
 
-@media (min-width: 1200px) {
-  html {
-    font-size: 15px;
-  }
-
+@media (min-width: 1400px) {
   .app {
-    max-width: 780px;
-    padding: 0 3rem 5rem;
+    max-width: min(1600px, 92vw);
   }
 
-  .app-title {
-    font-size: 2.4rem;
-  }
-
-  .main-textarea {
-    font-size: 0.93rem;
+  .app-main {
+    column-gap: 4rem;
   }
 }
 
@@ -181,7 +199,7 @@ input, textarea {
 
 .app-title {
   font-family: var(--font-serif);
-  font-size: 2rem;
+  font-size: clamp(1.8rem, 3vw, 3rem);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -193,7 +211,6 @@ input, textarea {
   color: var(--text-secondary);
   font-size: 0.88rem;
   line-height: 1.5;
-  max-width: 560px;
 }
 
 /* ─── Sections ──────────────────────────────────────────────────────────────── */
@@ -721,7 +738,7 @@ input, textarea {
   line-height: 1.6;
 }
 
-/* ─── Responsive ────────────────────────────────────────────────────────────── */
+/* ─── Responsive: mobile ────────────────────────────────────────────────────── */
 
 @media (max-width: 560px) {
   .app-title {
