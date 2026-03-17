@@ -462,12 +462,12 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <section className="section">
+        <section className="section section--posture">
           <label className="section-label">Epistemic posture</label>
           <PostureSelector posture={posture} onChange={setPosture} />
         </section>
 
-        <section className="section">
+        <section className="section section--input">
           <div className="input-header">
             <label className="section-label" htmlFor="main-input">Your argument</label>
             <ExamplePicker onSelect={text => { setInput(text); setResult(null); setError(null) }} />
