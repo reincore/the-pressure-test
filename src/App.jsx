@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Key, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, RotateCcw, Loader2, ExternalLink, Clock } from 'lucide-react'
+import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Loader2, ExternalLink, Clock } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -155,62 +155,31 @@ function renderMarkdown(text) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ApiKeyBar({ apiKey, onKeyChange }) {
-  const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(apiKey)
-  const inputRef = useRef(null)
-  const hasKey = Boolean(apiKey)
 
-  const save = () => {
-    const trimmed = draft.trim()
-    onKeyChange(trimmed)
-    setEditing(false)
-  }
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+  const commit = () => onKeyChange(draft.trim())
 
   return (
     <div className="api-bar">
-      <div className="api-bar-left">
-        <Key size={13} className="api-icon" />
-        <span className="api-label">Gemini API Key</span>
-        <span className={`api-status ${hasKey ? 'api-status--set' : 'api-status--missing'}`}>
-          {hasKey ? 'set' : 'missing'}
-        </span>
-      </div>
-      <div className="api-bar-right">
-        {editing ? (
-          <div className="api-edit">
-            <input
-              ref={inputRef}
-              type="password"
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
-              placeholder="AIza..."
-              className="api-input"
-              spellCheck={false}
-            />
-            <button onClick={save} className="btn-secondary btn-sm">Save</button>
-            <button onClick={() => setEditing(false)} className="btn-ghost btn-sm">Cancel</button>
-          </div>
-        ) : (
-          <div className="api-actions">
-            <button onClick={() => { setDraft(apiKey); setEditing(true) }} className="btn-ghost btn-sm">
-              {hasKey ? 'Change' : 'Set key'}
-            </button>
-            <a
-              href="https://aistudio.google.com/app/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="api-link"
-            >
-              Get key <ExternalLink size={10} />
-            </a>
-          </div>
-        )}
-      </div>
+      <input
+        type="password"
+        className="api-input"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') { commit(); e.target.blur() } }}
+        placeholder="Paste your Gemini API key to get started"
+        spellCheck={false}
+        autoComplete="off"
+      />
+      <a
+        href="https://aistudio.google.com/app/apikey"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="api-link"
+      >
+        Get one free <ExternalLink size={10} />
+      </a>
     </div>
   )
 }
