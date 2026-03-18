@@ -22,6 +22,7 @@ Rules:
 - Note briefly what genuinely holds up.
 - Total response must be under 280 words. No filler.
 - Tone: a philosophy professor who respects the user enough to be honest.
+- In follow-up exchanges, continue the Socratic dialogue — respond to the user's replies, update your questions based on what they've clarified, and press further on what remains unresolved.
 
 Format:
 **Pressure Points**
@@ -52,6 +53,7 @@ Rules:
 - Close with a brief honest note on where the position actually holds up.
 - Total response must be under 300 words. No filler.
 - Tone: a sharp, well-informed colleague who disagrees and is not afraid to say so.
+- In follow-up exchanges, respond to the user's counter-arguments directly. If they make a good point, concede it briefly and shift to the next strongest objection. Hold your ground where they haven't answered.
 
 Format:
 **The Steelman**
@@ -83,6 +85,7 @@ Rules:
 - End with a direct verdict: Proceed, Refine, or Reconsider — with one sentence of explanation.
 - Total response must be under 280 words. No flattery, no cruelty.
 - Tone: warm and direct, like a smart friend who has seen a lot of ideas fail.
+- In follow-up exchanges, respond like a friend continuing the conversation — engage with what they've said, update your view if they've given you new information, and stay honest.
 
 Format:
 **First Reaction**
@@ -128,7 +131,7 @@ const EXAMPLES = [
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-async function callGemini(apiKey, systemPrompt, userInput) {
+async function callGemini(apiKey, systemPrompt, contents) {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
@@ -136,7 +139,7 @@ async function callGemini(apiKey, systemPrompt, userInput) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ parts: [{ text: userInput }] }],
+        contents,
         generationConfig: { temperature: 0.9 },
       }),
     }
@@ -154,6 +157,10 @@ async function callGemini(apiKey, systemPrompt, userInput) {
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw Object.assign(new Error('Empty response from API'), { code: 'EMPTY' })
   return text
+}
+
+function threadToContents(thread) {
+  return thread.map(t => ({ role: t.role, parts: [{ text: t.text }] }))
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -342,11 +349,83 @@ function ErrorCard({ error, onDismiss }) {
   )
 }
 
-function ResultPanel({ result, posture }) {
+function ReplyInput({ onReply, onReset, loading }) {
+  const [draft, setDraft] = useState('')
+  const ref = useRef(null)
+
+  const submit = () => {
+    if (draft.trim() && !loading) {
+      onReply(draft.trim())
+      setDraft('')
+    }
+  }
+
+  // Auto-focus when the reply input first mounts
+  useEffect(() => { ref.current?.focus() }, [])
+
+  return (
+    <div className="reply-input-row">
+      <textarea
+        ref={ref}
+        className="reply-textarea"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit() }}
+        placeholder="Push back, clarify, or ask a follow-up…"
+        rows={2}
+      />
+      <div className="reply-actions">
+        <button className="btn-ghost btn-sm" onClick={onReset}>New test</button>
+        <button
+          className="submit-btn"
+          onClick={submit}
+          disabled={!draft.trim() || loading}
+        >
+          {loading
+            ? <><Loader2 size={13} className="spinner" /> Thinking…</>
+            : 'Reply'
+          }
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ThreadPanel({ thread, posture, loading, onReply, onReset }) {
+  const modelTurns = thread.filter(t => t.role === 'model')
+  const lastIsModel = thread.length > 0 && thread[thread.length - 1].role === 'model'
+
   return (
     <div className="result-panel">
       <div className="result-posture-tag">{MODES[posture]?.label}</div>
-      <div className="result-body">{renderMarkdown(result)}</div>
+
+      {thread.map((turn, i) => {
+        if (turn.role === 'model') {
+          const modelIndex = modelTurns.indexOf(turn)
+          return (
+            <div key={i} className={`thread-model-turn${modelIndex === 0 ? ' thread-model-turn--first' : ''}`}>
+              <div className="result-body">{renderMarkdown(turn.text)}</div>
+            </div>
+          )
+        } else {
+          return (
+            <div key={i} className="thread-user-turn">
+              <div className="thread-user-label">Your reply</div>
+              {turn.text}
+            </div>
+          )
+        }
+      })}
+
+      {lastIsModel && (
+        <ReplyInput onReply={onReply} onReset={onReset} loading={loading} />
+      )}
+
+      {!lastIsModel && loading && (
+        <div className="thread-thinking">
+          <Loader2 size={14} className="spinner" /> Thinking…
+        </div>
+      )}
     </div>
   )
 }
@@ -374,6 +453,9 @@ function HistoryPanel({ history, onReload, onClear }) {
               <div className="history-item-meta">
                 <span className="history-posture">{MODES[item.posture]?.label}</span>
                 <span className="history-time">{new Date(item.timestamp).toLocaleString()}</span>
+                {item.thread && item.thread.length > 2 && (
+                  <span className="history-replies">{(item.thread.length - 2) / 2 + 1} exchanges</span>
+                )}
               </div>
               <div className="history-preview">{item.inputPreview}</div>
             </button>
@@ -407,14 +489,17 @@ export default function App() {
   const [posture, setPosture] = useState('socratic')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [resultPosture, setResultPosture] = useState('trusted')
+  const [thread, setThread] = useState([])
+  const [threadPosture, setThreadPosture] = useState('socratic')
   const [error, setError] = useState(null)
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LS_KEY_HISTORY) || '[]') } catch { return [] }
   })
   const [toasts, setToasts] = useState([])
   const [apiKeyHighlight, setApiKeyHighlight] = useState(false)
+  const mainInputRef = useRef(null)
+
+  const hasThread = thread.length > 0
 
   const addToast = useCallback((type, message) => {
     const id = Date.now() + Math.random()
@@ -432,14 +517,14 @@ export default function App() {
     else localStorage.removeItem(LS_KEY_API)
   }, [])
 
-  const saveToHistory = useCallback((posture, inputText, result) => {
+  const saveToHistory = useCallback((posture, inputText, thread) => {
     const entry = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       posture,
       inputPreview: inputText.slice(0, 120).trim(),
       inputFull: inputText,
-      result,
+      thread,
     }
     setHistory(prev => {
       const next = [entry, ...prev].slice(0, MAX_HISTORY)
@@ -459,13 +544,17 @@ export default function App() {
 
     setLoading(true)
     setError(null)
-    setResult(null)
+    setThread([])
+
+    const userTurn = { role: 'user', text: input.trim() }
+    const contents = [{ role: 'user', parts: [{ text: input.trim() }] }]
 
     try {
-      const text = await callGemini(apiKey, MODES[posture].systemPrompt, input.trim())
-      setResult(text)
-      setResultPosture(posture)
-      saveToHistory(posture, input.trim(), text)
+      const text = await callGemini(apiKey, MODES[posture].systemPrompt, contents)
+      const newThread = [userTurn, { role: 'model', text }]
+      setThread(newThread)
+      setThreadPosture(posture)
+      saveToHistory(posture, input.trim(), newThread)
       addToast('success', 'Analysis complete')
     } catch (err) {
       setError({ code: err.code || 'generic', message: err.message })
@@ -474,11 +563,46 @@ export default function App() {
     }
   }, [apiKey, posture, input, saveToHistory, addToast])
 
+  const handleReply = useCallback(async (replyText) => {
+    if (!apiKey) return
+
+    const userTurn = { role: 'user', text: replyText }
+    const updatedThread = [...thread, userTurn]
+    setThread(updatedThread)
+    setLoading(true)
+    setError(null)
+
+    const contents = threadToContents(updatedThread)
+
+    try {
+      const text = await callGemini(apiKey, MODES[threadPosture].systemPrompt, contents)
+      const finalThread = [...updatedThread, { role: 'model', text }]
+      setThread(finalThread)
+      // Update the history entry for this session (replace top entry)
+      saveToHistory(threadPosture, input.trim(), finalThread)
+    } catch (err) {
+      // Roll back the optimistic user turn on failure
+      setThread(thread)
+      setError({ code: err.code || 'generic', message: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }, [apiKey, thread, threadPosture, input, saveToHistory])
+
+  const handleReset = useCallback(() => {
+    setThread([])
+    setError(null)
+    setInput('')
+    setTimeout(() => mainInputRef.current?.focus(), 50)
+  }, [])
+
   const handleReload = useCallback(item => {
     setPosture(item.posture)
     setInput(item.inputFull)
-    setResult(item.result)
-    setResultPosture(item.posture)
+    // Backward compat: old entries stored result:string, new ones store thread:array
+    const restoredThread = item.thread ?? (item.result ? [{ role: 'model', text: item.result }] : [])
+    setThread(restoredThread)
+    setThreadPosture(item.posture)
     setError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
@@ -511,9 +635,10 @@ export default function App() {
         <section className="section section--input">
           <div className="input-header">
             <label className="section-label" htmlFor="main-input">Your argument</label>
-            <ExamplePicker onSelect={text => { setInput(text); setResult(null); setError(null) }} />
+            <ExamplePicker onSelect={text => { setInput(text); setThread([]); setError(null) }} />
           </div>
           <textarea
+            ref={mainInputRef}
             id="main-input"
             className="main-textarea"
             value={input}
@@ -534,7 +659,7 @@ export default function App() {
               onClick={handleSubmit}
               disabled={!canSubmit}
             >
-              {loading ? (
+              {loading && !hasThread ? (
                 <>
                   <Loader2 size={15} className="spinner" />
                   Analyzing…
@@ -550,8 +675,14 @@ export default function App() {
           <ErrorCard error={error} onDismiss={() => setError(null)} />
         )}
 
-        {result && (
-          <ResultPanel result={result} posture={resultPosture} />
+        {hasThread && (
+          <ThreadPanel
+            thread={thread}
+            posture={threadPosture}
+            loading={loading}
+            onReply={handleReply}
+            onReset={handleReset}
+          />
         )}
 
         <HistoryPanel

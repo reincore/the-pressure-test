@@ -743,6 +743,87 @@ input, textarea {
   color: #c08080;
 }
 
+/* ─── Thread panel ──────────────────────────────────────────────────────────── */
+
+.thread-model-turn {
+  border-top: 1px solid var(--border);
+}
+
+.thread-model-turn--first {
+  border-top: none;
+}
+
+.thread-user-turn {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.thread-user-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-style: normal;
+  margin-bottom: 0.25rem;
+}
+
+.thread-thinking {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* ─── Reply input ───────────────────────────────────────────────────────────── */
+
+.reply-input-row {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reply-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+}
+
+.reply-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ─── History replies badge ─────────────────────────────────────────────────── */
+
+.history-replies {
+  font-size: 0.75rem;
+  color: var(--accent-dim);
+  margin-left: auto;
+}
+
 /* ─── Footer ────────────────────────────────────────────────────────────────── */
 
 .app-footer {
