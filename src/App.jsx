@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Loader2, ExternalLink, Clock } from 'lucide-react'
+import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Loader2, ExternalLink, Clock, Key } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -165,14 +165,22 @@ function renderMarkdown(text) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ApiKeyBar({ apiKey, onKeyChange }) {
+function ApiKeyBar({ apiKey, onKeyChange, highlight }) {
   const [draft, setDraft] = useState(apiKey)
   const isSet = Boolean(apiKey)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (highlight && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      ref.current.querySelector('input')?.focus()
+    }
+  }, [highlight])
 
   const commit = () => onKeyChange(draft.trim())
 
   return (
-    <div className={`api-bar${isSet ? ' api-bar--set' : ''}`}>
+    <div ref={ref} className={`api-bar${isSet ? ' api-bar--set' : ''}${highlight ? ' api-bar--highlight' : ''}`}>
       <span className="api-bar-label">
         {isSet ? 'Gemini API key (set)' : 'Gemini API key — required to run the test'}
       </span>
@@ -376,6 +384,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem(LS_KEY_HISTORY) || '[]') } catch { return [] }
   })
   const [toasts, setToasts] = useState([])
+  const [apiKeyHighlight, setApiKeyHighlight] = useState(false)
 
   const addToast = useCallback((type, message) => {
     const id = Date.now() + Math.random()
@@ -412,6 +421,8 @@ export default function App() {
   const handleSubmit = useCallback(async () => {
     if (!apiKey) {
       setError({ code: 'no_key' })
+      setApiKeyHighlight(true)
+      setTimeout(() => setApiKeyHighlight(false), 2000)
       return
     }
     if (!input.trim()) return
@@ -452,7 +463,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <ApiKeyBar apiKey={apiKey} onKeyChange={handleKeyChange} />
+      <ApiKeyBar apiKey={apiKey} onKeyChange={handleKeyChange} highlight={apiKeyHighlight} />
 
       <header className="app-header">
         <h1 className="app-title">The Pressure Test</h1>
